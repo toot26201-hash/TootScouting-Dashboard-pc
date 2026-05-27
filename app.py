@@ -4,45 +4,54 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from mplsoccer import Pitch
 
-# إعداد الصفحة لتكون واسعة
+# 1. إعداد الصفحة
 st.set_page_config(layout="wide")
+st.title("TootScouting: تقرير الأداء")
 
-# كود التنسيق (CSS) لتثبيت شكل الكارت
+# 2. تحميل البيانات
+@st.cache_data
+def load_data():
+    return pd.read_csv('EPS-honka-actions.csv')
+
+df = load_data()
+
+# 3. اختيار اللاعب (مع التأكد من وجود البيانات)
+players = sorted(df['Player'].dropna().unique())
+selected_player = st.sidebar.selectbox("اختر اللاعب:", players)
+player_df = df[df['Player'] == selected_player]
+
+# 4. بناء الكارت (Card)
 st.markdown("""
 <style>
-    .main-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-    .title-text { color: #2c3e50; font-weight: bold; font-size: 28px; }
-    .stat-box { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+    .card { background-color: white; padding: 20px; border-radius: 15px; border: 1px solid #ddd; }
 </style>
 """, unsafe_allow_html=True)
 
-# البيانات
-df = pd.read_csv('EPS-honka-actions.csv')
-player = st.sidebar.selectbox("اختر اللاعب:", sorted(df['Player'].dropna().unique()))
-player_df = df[df['Player'] == player]
-
-# --- الكارت ---
 with st.container():
-    st.markdown('<div class="main-card">', unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
     
-    st.markdown(f'<p class="title-text">تقرير تحليل الضغط: {player}</p>', unsafe_allow_html=True)
-    
-    # تقسيم الصفحة لجزئين: اليمين للخريطة، اليسار للبيانات
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader("خريطة كثافة الضغط")
+        st.subheader(f"تحليل: {selected_player}")
+        press_count = len(player_df[player_df['Action'] == 'pressing'])
+        st.metric("عدد عمليات الضغط", press_count)
+        
+        # أشرطة التقييم
+        st.write("معدلات الضغط (Percentiles)")
+        st.progress(0.85) # يمكنك استبدالها بمعادلة حسابية
+        st.write("الضغط العالي")
+    
+    with col2:
+        # رسم الملعب
         pitch = Pitch(pitch_type='statsbomb', pitch_color='#22312b', line_color='#c7d5cc')
         fig, ax = pitch.draw(figsize=(6, 4))
-        press = player_df[player_df['Action'] == 'pressing']
-        sns.kdeplot(x=press['X Start']*105, y=press['Y Start']*68, fill=True, cmap='viridis', ax=ax)
+        
+        # التأكد من وجود بيانات قبل الرسم
+        press_data = player_df[player_df['Action'] == 'pressing']
+        if not press_data.empty:
+            sns.kdeplot(x=press_data['X Start'] * 105, y=press_data['Y Start'] * 68, fill=True, cmap='viridis', ax=ax)
+        
         st.pyplot(fig)
         
-    with col2:
-        st.subheader("أبرز الإحصائيات (Percentile)")
-        stats = {"الضغط العالي": 85, "الضغط المضاد": 75, "نجاح الضغط": 60, "الضغط الدفاعي": 50}
-        for label, val in stats.items():
-            st.write(f"**{label}**")
-            st.progress(val / 100)
-            
     st.markdown('</div>', unsafe_allow_html=True)
