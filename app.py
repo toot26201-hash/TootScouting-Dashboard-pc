@@ -8,7 +8,7 @@ import os
 st.set_page_config(layout="wide")
 st.title("⚽ TootScouting: لوحة تحليل الموسم")
 
-# 1. دالة التحميل الموحدة
+# 1. تحميل ودمج البيانات
 @st.cache_data
 def load_all_matches():
     all_files = glob.glob("*.csv")
@@ -27,21 +27,20 @@ if df.empty:
     st.error("لم يتم العثور على ملفات CSV.")
     st.stop()
 
-# 2. الفلترة مع حماية من الأخطاء (التنظيف الذكي)
-# نحول القيم لنص ونحذف الفارغ قبل الترتيب
+# 2. الفلاتر (مع تنظيف البيانات)
 players = sorted([str(p) for p in df['Player'].dropna().unique()])
 selected_player = st.sidebar.selectbox("اختر اللاعب:", players)
+player_df = df[df['Player'] == selected_player]
 
-# فلتر المباريات
-all_matches = sorted(df['Match_Name'].unique())
+all_matches = sorted(player_df['Match_Name'].unique())
 selected_matches = st.sidebar.multiselect("اختر المباريات:", all_matches, default=all_matches)
+player_df = player_df[player_df['Match_Name'].isin(selected_matches)]
 
-player_df = df[(df['Player'] == selected_player) & (df['Match_Name'].isin(selected_matches))]
+# 3. اختيار الأحداث (بدون إجبار افتراضي لتجنب الخطأ)
+all_actions = sorted(df['Action'].dropna().unique())
+actions = st.multiselect("اختر الأحداث للعرض:", options=all_actions)
 
-# اختيار الأحداث
-actions = st.multiselect("اختر الأحداث للعرض:", options=df['Action'].dropna().unique(), default=['pressing', 'counter_pressing'] if 'pressing' in df['Action'].unique() else [])
-
-# 3. العرض
+# 4. العرض
 col1, col2 = st.columns([1, 2])
 
 with col1:
@@ -49,7 +48,7 @@ with col1:
     for action in actions:
         count = len(player_df[player_df['Action'] == action])
         st.metric(f"إجمالي {action}", count)
-            
+
 with col2:
     st.subheader("خريطة التمركز")
     pitch = Pitch(pitch_type='statsbomb', pitch_color='white', line_color='black')
@@ -58,7 +57,8 @@ with col2:
     for action in actions:
         data = player_df[player_df['Action'] == action]
         if not data.empty:
-            color = 'red' if 'press' in action else 'blue'
+            # نحدد اللون بناءً على اسم الأكشن الموجود في ملفاتك فعلياً
+            color = 'red' if 'press' in action.lower() else 'blue' if 'counter' in action.lower() else 'black'
             pitch.scatter(data['X Start']*105, data['Y Start']*68, ax=ax, 
                           color=color, facecolor='none', edgecolor=color, s=100, label=action)
     
