@@ -5,34 +5,42 @@ from mplsoccer import Pitch
 import glob
 import os
 
-# اعداد الصفحة
+# إعداد الصفحة
 st.set_page_config(layout="wide")
 st.title("TootScouting Analytics Dashboard")
 
-# 1. تحميل ودمج البيانات
+# 1. تحميل ودمج كافة ملفات البيانات (CSV أو Excel)
 @st.cache_data
 def load_all_matches():
-    all_files = glob.glob("*.csv")
+    # البحث عن ملفات CSV و XLSX
+    all_files = glob.glob("*.csv") + glob.glob("*.xlsx")
     df_list = []
+    
     for f in all_files:
         try:
-            temp_df = pd.read_csv(f)
+            if f.endswith('.csv'):
+                temp_df = pd.read_csv(f)
+            else:
+                temp_df = pd.read_excel(f)
+                
             temp_df['Match_Name'] = os.path.basename(f)
             df_list.append(temp_df)
         except: continue
+            
     return pd.concat(df_list, axis=0, ignore_index=True) if df_list else pd.DataFrame()
 
 df = load_all_matches()
 
 if df.empty:
-    st.error("لم يتم العثور على ملفات CSV.")
+    st.error("لم يتم العثور على ملفات بيانات (CSV أو Excel).")
     st.stop()
 
-# 2. التنظيف الذكي (هنا كان مكان الخطأ وتم حله)
-# نحذف القيم الفارغة، نحول لنصوص، ونزيل المسافات الزائدة
+# 2. تنظيف البيانات (حل جذري لمشاكل الترتيب والأسماء)
 df['Player'] = df['Player'].fillna("Unknown").astype(str).str.strip()
-players = sorted(df['Player'].unique().tolist())
+df['Action'] = df['Action'].fillna("Unknown").astype(str).str.strip()
 
+# الفلترة
+players = sorted(df['Player'].unique().tolist())
 selected_player = st.sidebar.selectbox("اختر اللاعب:", players)
 player_df = df[df['Player'] == selected_player]
 
@@ -42,7 +50,7 @@ selected_matches = st.sidebar.multiselect("اختر المباريات:", all_ma
 final_df = player_df[player_df['Match_Name'].isin(selected_matches)]
 
 # اختيار الأحداث
-all_actions = sorted(df['Action'].dropna().unique().tolist())
+all_actions = sorted(df['Action'].unique().tolist())
 actions = st.multiselect("اختر الأحداث للعرض:", options=all_actions)
 
 # 3. العرض
@@ -62,7 +70,7 @@ with col2:
     for action in actions:
         data = final_df[final_df['Action'] == action]
         if not data.empty:
-            # تلوين ذكي
+            # تلوين ذكي (أزرق للضغط العكسي، أحمر للضغط)
             if 'counter' in action.lower():
                 color = 'blue'
             elif 'press' in action.lower():
