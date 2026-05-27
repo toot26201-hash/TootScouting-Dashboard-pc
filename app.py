@@ -27,7 +27,7 @@ if df.empty:
     st.error("لم يتم العثور على ملفات CSV.")
     st.stop()
 
-# 2. الفلاتر (مع تنظيف البيانات)
+# 2. الفلترة
 players = sorted([str(p) for p in df['Player'].dropna().unique()])
 selected_player = st.sidebar.selectbox("اختر اللاعب:", players)
 player_df = df[df['Player'] == selected_player]
@@ -36,7 +36,7 @@ all_matches = sorted(player_df['Match_Name'].unique())
 selected_matches = st.sidebar.multiselect("اختر المباريات:", all_matches, default=all_matches)
 player_df = player_df[player_df['Match_Name'].isin(selected_matches)]
 
-# 3. اختيار الأحداث (بدون إجبار افتراضي لتجنب الخطأ)
+# 3. اختيار الأحداث
 all_actions = sorted(df['Action'].dropna().unique())
 actions = st.multiselect("اختر الأحداث للعرض:", options=all_actions)
 
@@ -57,8 +57,14 @@ with col2:
     for action in actions:
         data = player_df[player_df['Action'] == action]
         if not data.empty:
-            # نحدد اللون بناءً على اسم الأكشن الموجود في ملفاتك فعلياً
-            color = 'red' if 'press' in action.lower() else 'blue' if 'counter' in action.lower() else 'black'
+            # التعديل هنا: الضغط العكسي (Counter) أزرق، الضغط (Press) أحمر
+            if 'counter' in action.lower():
+                color = 'blue'
+            elif 'press' in action.lower():
+                color = 'red'
+            else:
+                color = 'black'
+                
             pitch.scatter(data['X Start']*105, data['Y Start']*68, ax=ax, 
                           color=color, facecolor='none', edgecolor=color, s=100, label=action)
     
