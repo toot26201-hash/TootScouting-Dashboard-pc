@@ -6,9 +6,9 @@ import glob
 import os
 
 st.set_page_config(layout="wide")
-st.title("⚽ TootScouting: لوحة تحليل الموسم")
+st.title("⚽ TootScouting: لوحة تحليل الموسم الكامل")
 
-# 1. تحميل ودمج البيانات
+# 1. تحميل ودمج كافة ملفات الـ CSV
 @st.cache_data
 def load_all_matches():
     all_files = glob.glob("*.csv")
@@ -27,14 +27,14 @@ if df.empty:
     st.error("لم يتم العثور على ملفات CSV.")
     st.stop()
 
-# 2. الفلترة
+# 2. الفلاتر
 players = sorted([str(p) for p in df['Player'].dropna().unique()])
 selected_player = st.sidebar.selectbox("اختر اللاعب:", players)
 player_df = df[df['Player'] == selected_player]
 
 all_matches = sorted(player_df['Match_Name'].unique())
-selected_matches = st.sidebar.multiselect("اختر المباريات:", all_matches, default=all_matches)
-player_df = player_df[player_df['Match_Name'].isin(selected_matches)]
+selected_matches = st.sidebar.multiselect("اختر المباريات (لتحليل كل الماتشات اخترها جميعاً):", all_matches, default=all_matches)
+final_df = player_df[player_df['Match_Name'].isin(selected_matches)]
 
 # 3. اختيار الأحداث
 all_actions = sorted(df['Action'].dropna().unique())
@@ -44,20 +44,20 @@ actions = st.multiselect("اختر الأحداث للعرض:", options=all_acti
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    st.subheader(f"تحليل: {selected_player}")
+    st.subheader(f"تحليل الموسم: {selected_player}")
     for action in actions:
-        count = len(player_df[player_df['Action'] == action])
+        count = len(final_df[final_df['Action'] == action])
         st.metric(f"إجمالي {action}", count)
 
 with col2:
-    st.subheader("خريطة التمركز")
+    st.subheader("خريطة التمركز لجميع الماتشات المختارة")
     pitch = Pitch(pitch_type='statsbomb', pitch_color='white', line_color='black')
     fig, ax = pitch.draw(figsize=(8, 5))
     
     for action in actions:
-        data = player_df[player_df['Action'] == action]
+        data = final_df[final_df['Action'] == action]
         if not data.empty:
-            # التعديل هنا: الضغط العكسي (Counter) أزرق، الضغط (Press) أحمر
+            # الضغط أحمر، الضغط العكسي أزرق
             if 'counter' in action.lower():
                 color = 'blue'
             elif 'press' in action.lower():
