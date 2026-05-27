@@ -10,27 +10,20 @@ st.title("TootScouting Analytics Dashboard")
 
 @st.cache_data
 def load_all_matches():
-    # يبحث عن كل الملفات المتاحة
-    all_files = glob.glob("*.csv") + glob.glob("*.xlsx")
+    all_files = glob.glob("*.csv") # يقرأ CSV فقط
     df_list = []
     for f in all_files:
         try:
-            if f.endswith('.csv'):
-                temp_df = pd.read_csv(f)
-            else:
-                # هذه الدالة تحتاج مكتبة openpyxl التي سنضيفها لـ requirements.txt
-                temp_df = pd.read_excel(f)
-                
+            temp_df = pd.read_csv(f)
             temp_df['Match_Name'] = os.path.basename(f)
             df_list.append(temp_df)
-        except Exception as e:
-            continue
+        except: continue
     return pd.concat(df_list, axis=0, ignore_index=True) if df_list else pd.DataFrame()
 
 df = load_all_matches()
 
 if df.empty:
-    st.error("لم يتم العثور على ملفات بيانات.")
+    st.error("لم يتم العثور على ملفات CSV. تأكد من رفعها!")
     st.stop()
 
 # تنظيف البيانات
@@ -42,12 +35,10 @@ players = sorted(df['Player'].unique().tolist())
 selected_player = st.sidebar.selectbox("اختر اللاعب:", players)
 player_df = df[df['Player'] == selected_player]
 
-# اختيار المباريات
 all_matches = sorted(player_df['Match_Name'].unique())
 selected_matches = st.sidebar.multiselect("اختر المباريات:", all_matches, default=all_matches)
 final_df = player_df[player_df['Match_Name'].isin(selected_matches)]
 
-# اختيار الأحداث
 all_actions = sorted(df['Action'].unique().tolist())
 actions = st.multiselect("اختر الأحداث للعرض:", options=all_actions)
 
