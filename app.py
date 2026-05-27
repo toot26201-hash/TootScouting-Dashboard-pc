@@ -8,16 +8,20 @@ st.set_page_config(layout="wide")
 st.title("TootScouting: تحليل تكتيكي")
 
 # تحميل البيانات
-df = pd.read_csv('EPS-honka-actions.csv')
+@st.cache_data
+def load_data():
+    return pd.read_csv('EPS-honka-actions.csv')
+
+df = load_data()
 player = st.sidebar.selectbox("اختر اللاعب:", sorted(df['Player'].dropna().unique()))
 player_df = df[df['Player'] == player]
 
 # --- رسم الملعب بأبعاد طبيعية وخلفية بيضاء ---
-# استخدمنا 'statsbomb' لأنها تضبط أبعاد الملعب الطبيعية (105x68)
-# pitch_color='white' للخلفية البيضاء
-# line_color='black' لظهور الخطوط بوضوح على الأبيض
-pitch = Pitch(pitch_type='statsbomb', pitch_color='white', line_color='black', figsize=(10, 6))
-fig, ax = pitch.draw()
+# 1. إعداد الملعب (بدون figsize هنا)
+pitch = Pitch(pitch_type='statsbomb', pitch_color='white', line_color='black')
+
+# 2. رسم الملعب (نحدد الـ figsize هنا)
+fig, ax = pitch.draw(figsize=(10, 6))
 
 # رسم نقاط الضغط (أحمر مفرغ)
 press = player_df[player_df['Action'] == 'pressing']
